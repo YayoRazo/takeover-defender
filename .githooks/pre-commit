@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Pre-commit hook: owns the PATCH (3rd) digit of the version.
+# Sets it to (commit count) + 1 across AssemblyVersion / AssemblyFileVersion /
+# AssemblyInformationalVersion in Properties/AssemblyInfo.cs, then re-stages it so
+# the bump lands in the commit being created. Configure once with:
+#   git config core.hooksPath .githooks
+set -e
+
+root=$(git rev-parse --show-toplevel)
+count=$(($(git rev-list --count HEAD) + 1))
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$root/.githooks/set-patch.ps1" -Patch "$count"
+
+git add Properties/AssemblyInfo.cs
+echo "[pre-commit] version patch -> $count"

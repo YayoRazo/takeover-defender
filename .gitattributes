@@ -1,0 +1,7 @@
+# Line endings: the bash hook MUST be LF; Windows source keeps CRLF.
+.githooks/pre-commit text eol=lf
+.githooks/set-patch.ps1 text eol=crlf
+
+# Binaries
+*.ico binary
+*.png binary

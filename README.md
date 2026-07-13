@@ -133,7 +133,9 @@ Tamper Protection on Windows 10+ is automatically disabled before changes and re
 takeover-defender/
 ├── README.md
 ├── LICENSE
+├── CHANGELOG.md                # version history
 ├── .gitignore
+├── .gitattributes              # LF for the bash hook, binaries
 ├── TakeoverDefender.sln        # open/build/test both projects
 ├── packages.lock.json          # locked NuGraph for reproducible restore
 ├── TakeoverDefender.csproj
@@ -141,8 +143,16 @@ takeover-defender/
 ├── app.ico
 ├── App.xaml / App.xaml.cs    # OS/admin guard, single-instance, stale-task cleanup
 ├── MainWindow.xaml / .cs     # UI: status, take-over/restore, log
-├── scripts/install-sdk.ps1
-├── Properties/AssemblyInfo.cs
+├── Properties/AssemblyInfo.cs  # 3-digit version source (x.y.z)
+├── .githooks/
+│   ├── pre-commit            # auto-sets the version patch from the commit count
+│   └── set-patch.ps1
+├── .github/workflows/release.yml  # tag v* -> build x64/x86 -> GitHub release
+├── scripts/
+│   ├── install-sdk.ps1
+│   ├── bump-version.ps1      # major|minor|x.y.z, -DryRun
+│   ├── disable-defender-safemode.ps1
+│   └── enable-defender-safemode.ps1
 ├── Utilities/
 │   ├── DefenderManager.cs    # disable/enable orchestration, state detection
 │   ├── CommandExecutor.cs    # process + SYSTEM-via-scheduled-task runner
@@ -153,6 +163,34 @@ takeover-defender/
     ├── WindowsTests.cs       # live Windows compatibility checks
     └── TakeoverDefender.Tests.csproj
 ```
+
+## Versioning
+
+The version is a single 3-digit semver (`x.y.z`) kept in `Properties/AssemblyInfo.cs` (`AssemblyVersion`, `AssemblyFileVersion`, `AssemblyInformationalVersion`).
+
+- The **patch** (3rd digit) is owned by the pre-commit hook and set automatically to `git commit count + 1`. Enable it once per clone:
+  ```powershell
+  git config core.hooksPath .githooks
+  ```
+- **major / minor** are bumped explicitly:
+  ```powershell
+  .\scripts\bump-version.ps1 minor            # 1.2.7 -> 1.3.0
+  .\scripts\bump-version.ps1 major            # 1.2.7 -> 2.0.0
+  .\scripts\bump-version.ps1 2.5.0 -DryRun    # preview
+  ```
+  Then update `CHANGELOG.md`, commit (`chore(release): bump version to x.y.z`).
+
+### Releasing
+
+1. `.\scripts\bump-version.ps1 minor` (or `major`).
+2. Move `## Unreleased` entries in `CHANGELOG.md` under a dated `## x.y.z` section.
+3. Commit, then tag and push:
+   ```powershell
+   git commit -am "chore(release): bump version to x.y.z"
+   git tag vx.y.z
+   git push origin main --tags
+   ```
+4. The `release` workflow builds x64 + x86, runs tests, and publishes a GitHub Release with both `TakeoverDefender.exe` artifacts.
 
 ## License
 
