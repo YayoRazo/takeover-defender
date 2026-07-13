@@ -119,7 +119,7 @@ namespace TakeoverDefender.Utilities
             return targets;
         }
 
-        internal static readonly string[] ExcludeFolders = new[]
+        internal static readonly string[] FoldersToClean = new[]
         {
             Path.Combine(SystemDrive, "ProgramData", "Microsoft", "Windows Defender", "Scans", "History"),
             Path.Combine(SystemDrive, "ProgramData", "Microsoft", "Windows Defender", "Scans", "Workspace"),

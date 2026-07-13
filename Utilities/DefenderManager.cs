@@ -102,15 +102,16 @@ namespace TakeoverDefender.Utilities
             }
         }
 
-        public static void DeactivatePart1_Services()
+        public static int DeactivatePart1_Services()
         {
+            int failures = DisableDefenderServices();
             TerminateDefenderProcesses();
-            DisableDefenderServices();
+            return failures;
         }
 
-        public static void DeactivatePart2_Registry()
+        public static int DeactivatePart2_Registry()
         {
-            WriteDisableRegistryPolicies();
+            return WriteDisableRegistryPolicies();
         }
 
         public static bool DeactivatePart3_MpPreference()
@@ -118,9 +119,9 @@ namespace TakeoverDefender.Utilities
             return SetMpPreferenceDisable();
         }
 
-        public static void DeactivatePart4_BlockExecutables()
+        public static int DeactivatePart4_BlockExecutables()
         {
-            BlockDefenderExecutables();
+            return BlockDefenderExecutables();
         }
 
         public static void DeactivatePart5_CleanFolders()
@@ -128,24 +129,24 @@ namespace TakeoverDefender.Utilities
             CleanDefenderFolders();
         }
 
-        public static void DeactivatePart6_SmartScreen()
+        public static int DeactivatePart6_SmartScreen()
         {
-            SetSmartScreenOff();
+            return SetSmartScreenOff();
         }
 
-        public static void ActivatePart1_RestoreExecutables()
+        public static int ActivatePart1_RestoreExecutables()
         {
-            RestoreDefenderExecutables();
+            return RestoreDefenderExecutables();
         }
 
-        public static void ActivatePart2_Services()
+        public static int ActivatePart2_Services()
         {
-            EnableDefenderServices();
+            return EnableDefenderServices();
         }
 
-        public static void ActivatePart3_Registry()
+        public static int ActivatePart3_Registry()
         {
-            RemoveDisableRegistryPolicies();
+            return RemoveDisableRegistryPolicies();
         }
 
         public static bool ActivatePart4_MpPreference()
@@ -153,9 +154,9 @@ namespace TakeoverDefender.Utilities
             return SetMpPreferenceEnable();
         }
 
-        public static void ActivatePart5_SmartScreen()
+        public static int ActivatePart5_SmartScreen()
         {
-            SetSmartScreenOn();
+            return SetSmartScreenOn();
         }
 
         internal enum TamperStatus { Off, On, Unknown }
@@ -270,16 +271,25 @@ Set-MpPreference -PUAProtection Enabled
             return code == 0;
         }
 
-        private static void DisableDefenderServices()
+        private static int DisableDefenderServices()
         {
             CaptureOriginalStartTypes();
             var cmds = new StringBuilder();
             foreach (var svc in GetServices())
                 cmds.Append($"sc stop \"{svc.Key}\" & sc config \"{svc.Key}\" start= disabled & ");
             CommandExecutor.RunAsSystem(cmds.ToString().TrimEnd(' ', '&'));
+
+            int failures = 0;
+            foreach (var svc in GetServices())
+            {
+                int start = RegistryHelp.GetValue<int>(
+                    $@"HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\{svc.Key}", "Start", -1);
+                if (start != StartDisabled) failures++;
+            }
+            return failures;
         }
 
-        private static void EnableDefenderServices()
+        private static int EnableDefenderServices()
         {
             var cmds = new StringBuilder();
             foreach (var svc in GetServices())
@@ -290,6 +300,15 @@ Set-MpPreference -PUAProtection Enabled
                     cmds.Append($"sc start \"{svc.Key}\" & ");
             }
             CommandExecutor.RunAsSystem(cmds.ToString().TrimEnd(' ', '&'));
+
+            int failures = 0;
+            foreach (var svc in GetServices())
+            {
+                int start = RegistryHelp.GetValue<int>(
+                    $@"HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\{svc.Key}", "Start", -1);
+                if (start == StartDisabled || start < 0) failures++;
+            }
+            return failures;
         }
 
         private static void CaptureOriginalStartTypes()
@@ -316,108 +335,85 @@ Set-MpPreference -PUAProtection Enabled
             }
         }
 
-        private static void WriteDisableRegistryPolicies()
+        private static int WriteDisableRegistryPolicies()
         {
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender",
-                "DisableAntiSpyware", 1, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender",
-                "DisableAntiVirus", 1, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender",
-                "ServiceKeepAlive", 0, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender",
-                "AllowFastService", 0, RegistryValueKind.DWord);
+            int failures = 0;
+            void W(string subkey, string name, object data)
+            {
+                if (!RegistryHelp.Write(Registry.LocalMachine, subkey, name, data, RegistryValueKind.DWord))
+                    failures++;
+            }
 
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection",
-                "DisableRealtimeMonitoring", 1, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection",
-                "DisableBehaviorMonitoring", 1, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection",
-                "DisableIOAVProtection", 1, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection",
-                "DisableOnAccessProtection", 1, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection",
-                "DisableScanOnRealtimeEnable", 1, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection",
-                "DisableScriptScanning", 1, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection",
-                "DisableIntrusionPreventionSystem", 1, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection",
-                "DisableArchiveScanning", 1, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection",
-                "DisableBlockAtFirstSeen", 1, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection",
-                "DisablePrivacyMode", 1, RegistryValueKind.DWord);
+            const string P = @"SOFTWARE\Policies\Microsoft\Windows Defender";
 
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Features",
-                "TamperProtection", 0, RegistryValueKind.DWord);
+            W(P, "DisableAntiSpyware", 1);
+            W(P, "DisableAntiVirus", 1);
+            W(P, "ServiceKeepAlive", 0);
+            W(P, "AllowFastService", 0);
 
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine",
-                "MpEnablePus", 0, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine",
-                "MpCloudBlockLevel", 0, RegistryValueKind.DWord);
+            const string RT = @"SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection";
+            W(RT, "DisableRealtimeMonitoring", 1);
+            W(RT, "DisableBehaviorMonitoring", 1);
+            W(RT, "DisableIOAVProtection", 1);
+            W(RT, "DisableOnAccessProtection", 1);
+            W(RT, "DisableScanOnRealtimeEnable", 1);
+            W(RT, "DisableScriptScanning", 1);
+            W(RT, "DisableIntrusionPreventionSystem", 1);
+            W(RT, "DisableArchiveScanning", 1);
+            W(RT, "DisableBlockAtFirstSeen", 1);
+            W(RT, "DisablePrivacyMode", 1);
 
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Scan",
-                "DisableHeuristics", 1, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Scan",
-                "DisableEmailScanning", 1, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Scan",
-                "DisableCatchupQuickScan", 1, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Scan",
-                "DisableCatchupFullScan", 1, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Scan",
-                "DisableArchiveScanning", 1, RegistryValueKind.DWord);
+            W(@"SOFTWARE\Policies\Microsoft\Windows Defender\Features", "TamperProtection", 0);
 
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Signature Updates",
-                "DisableScheduledSignatureUpdateOnBattery", 1, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Signature Updates",
-                "UpdateOnStartUp", 0, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Signature Updates",
-                "DisableUpdateOnStartupWithoutEngine", 1, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Signature Updates",
-                "DisableScanOnUpdate", 1, RegistryValueKind.DWord);
+            W(@"SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine", "MpEnablePus", 0);
+            W(@"SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine", "MpCloudBlockLevel", 0);
 
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Reporting",
-                "DisableGenericRePorts", 1, RegistryValueKind.DWord);
+            W(@"SOFTWARE\Policies\Microsoft\Windows Defender\Scan", "DisableHeuristics", 1);
+            W(@"SOFTWARE\Policies\Microsoft\Windows Defender\Scan", "DisableEmailScanning", 1);
+            W(@"SOFTWARE\Policies\Microsoft\Windows Defender\Scan", "DisableCatchupQuickScan", 1);
+            W(@"SOFTWARE\Policies\Microsoft\Windows Defender\Scan", "DisableCatchupFullScan", 1);
+            W(@"SOFTWARE\Policies\Microsoft\Windows Defender\Scan", "DisableArchiveScanning", 1);
 
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\UX Configuration",
-                "Notification_Suppress", 1, RegistryValueKind.DWord);
+            W(@"SOFTWARE\Policies\Microsoft\Windows Defender\Signature Updates", "DisableScheduledSignatureUpdateOnBattery", 1);
+            W(@"SOFTWARE\Policies\Microsoft\Windows Defender\Signature Updates", "UpdateOnStartUp", 0);
+            W(@"SOFTWARE\Policies\Microsoft\Windows Defender\Signature Updates", "DisableUpdateOnStartupWithoutEngine", 1);
+            W(@"SOFTWARE\Policies\Microsoft\Windows Defender\Signature Updates", "DisableScanOnUpdate", 1);
 
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Notifications",
-                "DisableEnhancedNotifications", 1, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Notifications",
-                "DisableNotifications", 1, RegistryValueKind.DWord);
+            W(@"SOFTWARE\Policies\Microsoft\Windows Defender\Reporting", "DisableGenericRePorts", 1);
+            W(@"SOFTWARE\Policies\Microsoft\Windows Defender\UX Configuration", "Notification_Suppress", 1);
 
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Microsoft Antimalware",
-                "DisableAntiSpyware", 1, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Microsoft Antimalware",
-                "DisableAntiVirus", 1, RegistryValueKind.DWord);
+            W(@"SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Notifications", "DisableEnhancedNotifications", 1);
+            W(@"SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Notifications", "DisableNotifications", 1);
 
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Microsoft\Security Center",
-                "AntiVirusOverride", 1, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Microsoft\Security Center",
-                "FirewallOverride", 1, RegistryValueKind.DWord);
+            W(@"SOFTWARE\Policies\Microsoft\Microsoft Antimalware", "DisableAntiSpyware", 1);
+            W(@"SOFTWARE\Policies\Microsoft\Microsoft Antimalware", "DisableAntiVirus", 1);
 
-            RegistryHelp.Write(Registry.LocalMachine, @"SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\DomainProfile",
-                "DisableNotifications", 1, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\PrivateProfile",
-                "DisableNotifications", 1, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\StandardProfile",
-                "DisableNotifications", 1, RegistryValueKind.DWord);
+            W(@"SOFTWARE\Microsoft\Security Center", "AntiVirusOverride", 1);
+            W(@"SOFTWARE\Microsoft\Security Center", "FirewallOverride", 1);
+
+            const string FW = @"SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy";
+            W(FW + @"\DomainProfile", "DisableNotifications", 1);
+            W(FW + @"\PrivateProfile", "DisableNotifications", 1);
+            W(FW + @"\StandardProfile", "DisableNotifications", 1);
+
+            return failures;
         }
 
-        private static void RemoveDisableRegistryPolicies()
+        private static int RemoveDisableRegistryPolicies()
         {
-            RegistryHelp.DeleteFolder(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender");
-            RegistryHelp.DeleteFolder(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Microsoft Antimalware");
-            RegistryHelp.DeleteValue(Registry.LocalMachine, @"SOFTWARE\Microsoft\Security Center", "AntiVirusOverride");
-            RegistryHelp.DeleteValue(Registry.LocalMachine, @"SOFTWARE\Microsoft\Security Center", "FirewallOverride");
+            int failures = 0;
+            const string FW = @"SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy";
 
-            RegistryHelp.Write(Registry.LocalMachine, @"SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\DomainProfile",
-                "DisableNotifications", 0, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\PrivateProfile",
-                "DisableNotifications", 0, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\StandardProfile",
-                "DisableNotifications", 0, RegistryValueKind.DWord);
+            if (!RegistryHelp.DeleteFolder(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender")) failures++;
+            if (!RegistryHelp.DeleteFolder(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Microsoft Antimalware")) failures++;
+            if (!RegistryHelp.DeleteValue(Registry.LocalMachine, @"SOFTWARE\Microsoft\Security Center", "AntiVirusOverride")) failures++;
+            if (!RegistryHelp.DeleteValue(Registry.LocalMachine, @"SOFTWARE\Microsoft\Security Center", "FirewallOverride")) failures++;
+
+            if (!RegistryHelp.Write(Registry.LocalMachine, FW + @"\DomainProfile", "DisableNotifications", 0, RegistryValueKind.DWord)) failures++;
+            if (!RegistryHelp.Write(Registry.LocalMachine, FW + @"\PrivateProfile", "DisableNotifications", 0, RegistryValueKind.DWord)) failures++;
+            if (!RegistryHelp.Write(Registry.LocalMachine, FW + @"\StandardProfile", "DisableNotifications", 0, RegistryValueKind.DWord)) failures++;
+
+            return failures;
         }
 
         private static string OwnRename(string from, string toName)
@@ -425,15 +421,17 @@ Set-MpPreference -PUAProtection Enabled
             return $"takeown /f \"{from}\" /a && icacls \"{from}\" /grant *S-1-5-32-544:F && rename \"{from}\" \"{toName}\" & ";
         }
 
-        private static void BlockDefenderExecutables()
+        private static int BlockDefenderExecutables()
         {
             var targets = PathLocator.GetDefenderExeTargets();
             var cmds = new StringBuilder();
+            var attempted = new List<string>();
 
             foreach (var (normal, block) in targets)
             {
                 if (!File.Exists(normal))
                     continue;
+                attempted.Add(normal);
                 cmds.Append(OwnRename(normal, Path.GetFileName(block)));
             }
 
@@ -444,24 +442,34 @@ Set-MpPreference -PUAProtection Enabled
                 {
                     string msMpEng = Path.Combine(versionDir, "MsMpEng.exe");
                     if (File.Exists(msMpEng))
+                    {
+                        attempted.Add(msMpEng);
                         cmds.Append(OwnRename(msMpEng, "BlockAntimalware.exe"));
+                    }
                 }
             }
 
             if (cmds.Length > 0)
                 CommandExecutor.RunAsSystem(cmds.ToString().TrimEnd(' ', '&'));
+
+            int failures = 0;
+            foreach (string f in attempted)
+                if (File.Exists(f)) failures++;
+            return failures;
         }
 
-        private static void RestoreDefenderExecutables()
+        private static int RestoreDefenderExecutables()
         {
             var targets = PathLocator.GetDefenderExeTargets();
             var cmds = new StringBuilder();
+            var expectedNormals = new List<string>();
 
             foreach (var (normal, block) in targets)
             {
                 if (!File.Exists(block))
                     continue;
 
+                expectedNormals.Add(normal);
                 if (File.Exists(normal))
                     cmds.Append($"takeown /f \"{normal}\" /a && del /f /q \"{normal}\" && ");
 
@@ -475,18 +483,26 @@ Set-MpPreference -PUAProtection Enabled
                 {
                     string blocked = Path.Combine(versionDir, "BlockAntimalware.exe");
                     if (File.Exists(blocked))
+                    {
+                        expectedNormals.Add(Path.Combine(versionDir, "MsMpEng.exe"));
                         cmds.Append(OwnRename(blocked, "MsMpEng.exe"));
+                    }
                 }
             }
 
             if (cmds.Length > 0)
                 CommandExecutor.RunAsSystem(cmds.ToString().TrimEnd(' ', '&'));
+
+            int failures = 0;
+            foreach (string f in expectedNormals)
+                if (!File.Exists(f)) failures++;
+            return failures;
         }
 
         private static void CleanDefenderFolders()
         {
-            var cmds = new System.Text.StringBuilder();
-            foreach (string folder in PathLocator.ExcludeFolders)
+            var cmds = new StringBuilder();
+            foreach (string folder in PathLocator.FoldersToClean)
             {
                 if (!Directory.Exists(folder))
                     continue;
@@ -499,25 +515,30 @@ Set-MpPreference -PUAProtection Enabled
                 CommandExecutor.RunAsSystem(cmds.ToString().TrimEnd(' ', '&'));
         }
 
-        private static void SetSmartScreenOff()
+        private static int SetSmartScreenOff()
         {
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer",
-                "SmartScreenEnabled", "Off", RegistryValueKind.String);
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\System",
-                "EnableSmartScreen", 0, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\AppHost",
-                "EnableWebContentEvaluation", 0, RegistryValueKind.DWord);
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter",
-                "EnabledV9", 0, RegistryValueKind.DWord);
+            int failures = 0;
+            void W(string subkey, string name, object data, RegistryValueKind kind)
+            {
+                if (!RegistryHelp.Write(Registry.LocalMachine, subkey, name, data, kind)) failures++;
+            }
+
+            W(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer", "SmartScreenEnabled", "Off", RegistryValueKind.String);
+            W(@"SOFTWARE\Policies\Microsoft\Windows\System", "EnableSmartScreen", 0, RegistryValueKind.DWord);
+            W(@"SOFTWARE\Microsoft\Windows\CurrentVersion\AppHost", "EnableWebContentEvaluation", 0, RegistryValueKind.DWord);
+            W(@"SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter", "EnabledV9", 0, RegistryValueKind.DWord);
+            return failures;
         }
 
-        private static void SetSmartScreenOn()
+        private static int SetSmartScreenOn()
         {
-            RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer",
-                "SmartScreenEnabled", "On", RegistryValueKind.String);
-            RegistryHelp.DeleteValue(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\System", "EnableSmartScreen");
-            RegistryHelp.DeleteValue(Registry.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\AppHost", "EnableWebContentEvaluation");
-            RegistryHelp.DeleteFolder(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter");
+            int failures = 0;
+            if (!RegistryHelp.Write(Registry.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer",
+                "SmartScreenEnabled", "On", RegistryValueKind.String)) failures++;
+            if (!RegistryHelp.DeleteValue(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\System", "EnableSmartScreen")) failures++;
+            if (!RegistryHelp.DeleteValue(Registry.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\AppHost", "EnableWebContentEvaluation")) failures++;
+            if (!RegistryHelp.DeleteFolder(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter")) failures++;
+            return failures;
         }
     }
 }

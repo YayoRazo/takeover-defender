@@ -2,6 +2,8 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Security;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using System.Text;
 using System.Threading;
 
@@ -14,6 +16,8 @@ namespace TakeoverDefender.Utilities
         private const int SystemTaskPollAttempts = 90;
         private const int SystemTaskPollIntervalMs = 1000;
         internal const string SystemTaskPrefix = "Tkd_";
+
+        private const int TaskStateRunning = 4;
 
         internal static int RunPowerShell(string script)
         {
@@ -138,21 +142,17 @@ namespace TakeoverDefender.Utilities
 
             try
             {
-                string xmlTask = BuildTaskXml(command);
-                File.WriteAllText(xmlPath, xmlTask, Encoding.Unicode);
+                WriteRestrictedFile(xmlPath, BuildTaskXml(command));
 
                 int create = RunCommandWithExit($"schtasks /create /tn \"{taskName}\" /xml \"{xmlPath}\" /f");
                 if (create != 0)
                     throw new InvalidOperationException(
                         $"Could not create SYSTEM task '{taskName}' (schtasks exit {create}).");
 
-                int run = RunCommandWithExit($"schtasks /run /tn \"{taskName}\"");
-                if (run != 0)
+                int result = RunTaskViaCom(taskName);
+                if (result != 0)
                     throw new InvalidOperationException(
-                        $"Could not start SYSTEM task '{taskName}' (schtasks exit {run}).");
-
-                WaitForSystemTask(taskName);
-                VerifySystemTaskResult(taskName);
+                        $"SYSTEM task '{taskName}' exited with result 0x{result:X}.");
             }
             finally
             {
@@ -161,36 +161,41 @@ namespace TakeoverDefender.Utilities
             }
         }
 
-        private static void WaitForSystemTask(string taskName)
+        private static int RunTaskViaCom(string taskName)
         {
+            Type type = Type.GetTypeFromProgID("Schedule.Service");
+            if (type == null)
+                throw new InvalidOperationException("Schedule.Service COM object is not available.");
+
+            dynamic service = Activator.CreateInstance(type);
+            service.Connect();
+            dynamic folder = service.GetFolder("\\");
+            dynamic task = folder.GetTask(taskName);
+
+            try
+            {
+                task.Run(0);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Could not start SYSTEM task '{taskName}'.", ex);
+            }
+
             for (int i = 0; i < SystemTaskPollAttempts; i++)
             {
                 Thread.Sleep(SystemTaskPollIntervalMs);
-                string status = RunCommandWithOutput($"schtasks /query /tn \"{taskName}\" /fo csv /nh");
-                if (string.IsNullOrEmpty(status) || !status.Contains("\"Running\""))
-                    return;
-            }
-            Debug.WriteLine($"SYSTEM task '{taskName}' still running after polling; relying on ExecutionTimeLimit + finally.");
-        }
-
-        private static void VerifySystemTaskResult(string taskName)
-        {
-            string details = RunCommandWithOutput($"schtasks /query /tn \"{taskName}\" /v /fo list");
-            foreach (string line in details.Split('\n'))
-            {
-                string trimmed = line.Trim('\r', ' ');
-                int idx = trimmed.LastIndexOf(':');
-                if (idx < 0) continue;
-                string value = trimmed.Substring(idx + 1).Trim();
-                if (value.Length >= 3 && value.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+                try
                 {
-                    if (!value.Equals("0x0", StringComparison.OrdinalIgnoreCase))
-                        throw new InvalidOperationException(
-                            $"SYSTEM task '{taskName}' exited with result {value}.");
-                    return;
+                    if ((int)task.State != TaskStateRunning)
+                        break;
+                }
+                catch
+                {
+                    break;
                 }
             }
-            Debug.WriteLine($"Could not determine last result of SYSTEM task '{taskName}'.");
+
+            return (int)task.LastTaskResult;
         }
 
         internal static void CleanupStaleSystemTasks()
@@ -208,6 +213,25 @@ namespace TakeoverDefender.Utilities
             catch (Exception ex)
             {
                 Debug.WriteLine($"Stale task cleanup failed: {ex.Message}");
+            }
+        }
+
+        private static void WriteRestrictedFile(string path, string content)
+        {
+            FileSecurity security = new FileSecurity();
+            security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+            SecurityIdentifier system = new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null);
+            SecurityIdentifier admins = new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null);
+            security.AddAccessRule(new FileSystemAccessRule(system, FileSystemRights.FullControl, AccessControlType.Allow));
+            security.AddAccessRule(new FileSystemAccessRule(admins, FileSystemRights.FullControl, AccessControlType.Allow));
+
+            using (FileStream fs = File.Create(path, 4096, FileOptions.None, security))
+            {
+                byte[] preamble = Encoding.Unicode.GetPreamble();
+                if (preamble.Length > 0)
+                    fs.Write(preamble, 0, preamble.Length);
+                byte[] bytes = Encoding.Unicode.GetBytes(content);
+                fs.Write(bytes, 0, bytes.Length);
             }
         }
 

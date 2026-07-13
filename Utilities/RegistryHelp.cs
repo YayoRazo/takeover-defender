@@ -14,21 +14,23 @@ namespace TakeoverDefender.Utilities
             return RegistryKey.OpenBaseKey(hive, DefaultView);
         }
 
-        internal static void Write(RegistryKey root, string subkey, string name, object data, RegistryValueKind kind)
+        internal static bool Write(RegistryKey root, string subkey, string name, object data, RegistryValueKind kind)
         {
             try
             {
                 using RegistryKey baseKey = GetWriteKey(GetHive(root));
                 using RegistryKey key = baseKey.CreateSubKey(subkey, true);
                 key?.SetValue(name, data, kind);
+                return true;
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Registry write failed: {subkey}\\{name} - {ex.Message}");
+                return false;
             }
         }
 
-        internal static void DeleteValue(RegistryKey root, string subkey, string name)
+        internal static bool DeleteValue(RegistryKey root, string subkey, string name)
         {
             try
             {
@@ -36,23 +38,27 @@ namespace TakeoverDefender.Utilities
                 using RegistryKey key = baseKey.OpenSubKey(subkey, true);
                 if (key?.GetValue(name) != null)
                     key.DeleteValue(name);
+                return true;
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Registry delete failed: {subkey}\\{name} - {ex.Message}");
+                return false;
             }
         }
 
-        internal static void DeleteFolder(RegistryKey root, string subkey)
+        internal static bool DeleteFolder(RegistryKey root, string subkey)
         {
             try
             {
                 using RegistryKey baseKey = GetWriteKey(GetHive(root));
                 baseKey.DeleteSubKeyTree(subkey, false);
+                return true;
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Registry delete folder failed: {subkey} - {ex.Message}");
+                return false;
             }
         }
 

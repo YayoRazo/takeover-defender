@@ -96,28 +96,28 @@ namespace TakeoverDefender
                         }
 
                         Log("[1/6] Stopping Defender services...");
-                        DefenderManager.DeactivatePart1_Services();
-                        Log("  Services stopped and disabled.\n");
+                        int svcFail = DefenderManager.DeactivatePart1_Services();
+                        LogResult("Services stopped and disabled.", svcFail);
 
                         Log("[2/6] Writing disable registry policies...");
-                        DefenderManager.DeactivatePart2_Registry();
-                        Log("  Registry policies applied.\n");
+                        int regFail = DefenderManager.DeactivatePart2_Registry();
+                        LogResult("Registry policies applied.", regFail);
 
                         Log("[3/6] Configuring MpPreference via PowerShell...");
                         bool mpOk = DefenderManager.DeactivatePart3_MpPreference();
                         Log(mpOk ? "  MpPreference configured.\n" : "  WARNING: MpPreference step reported a failure.\n");
 
                         Log("[4/6] Blocking Defender executables...");
-                        DefenderManager.DeactivatePart4_BlockExecutables();
-                        Log("  Executables blocked.\n");
+                        int exeFail = DefenderManager.DeactivatePart4_BlockExecutables();
+                        LogResult("Executables blocked.", exeFail);
 
                         Log("[5/6] Cleaning Defender folders...");
                         DefenderManager.DeactivatePart5_CleanFolders();
                         Log("  Folders cleaned.\n");
 
                         Log("[6/6] Disabling SmartScreen...");
-                        DefenderManager.DeactivatePart6_SmartScreen();
-                        Log("  SmartScreen disabled.\n");
+                        int ssFail = DefenderManager.DeactivatePart6_SmartScreen();
+                        LogResult("SmartScreen disabled.", ssFail);
 
                         Log("=== COMPLETED: Windows Defender is now under your control ===\n");
                         Log("System Antimalware (MsMpEng.exe) has been stopped.");
@@ -170,24 +170,24 @@ namespace TakeoverDefender
                         Log("  Tamper Protection handled.\n");
 
                         Log("[1/5] Restoring Defender executables...");
-                        DefenderManager.ActivatePart1_RestoreExecutables();
-                        Log("  Executables restored.\n");
+                        int exeFail = DefenderManager.ActivatePart1_RestoreExecutables();
+                        LogResult("Executables restored.", exeFail);
 
                         Log("[2/5] Enabling Defender services...");
-                        DefenderManager.ActivatePart2_Services();
-                        Log("  Services enabled.\n");
+                        int svcFail = DefenderManager.ActivatePart2_Services();
+                        LogResult("Services enabled.", svcFail);
 
                         Log("[3/5] Removing disable registry policies...");
-                        DefenderManager.ActivatePart3_Registry();
-                        Log("  Registry policies removed.\n");
+                        int regFail = DefenderManager.ActivatePart3_Registry();
+                        LogResult("Registry policies removed.", regFail);
 
                         Log("[4/5] Configuring MpPreference via PowerShell...");
                         bool mpOk = DefenderManager.ActivatePart4_MpPreference();
                         Log(mpOk ? "  MpPreference restored.\n" : "  WARNING: MpPreference step reported a failure.\n");
 
                         Log("[5/5] Re-enabling SmartScreen...");
-                        DefenderManager.ActivatePart5_SmartScreen();
-                        Log("  SmartScreen enabled.\n");
+                        int ssFail = DefenderManager.ActivatePart5_SmartScreen();
+                        LogResult("SmartScreen enabled.", ssFail);
 
                         Log("=== COMPLETED: Windows Defender has been restored ===\n");
                         Log("Real-time Protection is ON.");
@@ -218,6 +218,13 @@ namespace TakeoverDefender
                 TxtLog.AppendText(message.TrimEnd('\n', '\r') + Environment.NewLine);
                 TxtLog.ScrollToEnd();
             });
+        }
+
+        private void LogResult(string successMessage, int failures)
+        {
+            Log(failures > 0
+                ? $"  {successMessage} WARNING: {failures} item(s) reported a failure.\n"
+                : $"  {successMessage}\n");
         }
     }
 }
