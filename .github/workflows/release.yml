@@ -21,10 +21,10 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Build x64
-        run: dotnet build -c Release --nologo
+        run: dotnet build TakeoverDefender.csproj -c Release --nologo
 
       - name: Build x86
-        run: dotnet build -c Release_x86 --nologo
+        run: dotnet build TakeoverDefender.csproj -c Release_x86 --nologo
 
       - name: Test
         run: dotnet test --nologo --verbosity normal

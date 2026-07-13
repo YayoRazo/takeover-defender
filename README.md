@@ -90,9 +90,9 @@ Downloads and installs the .NET Framework 4.8 Developer Pack (Authenticode signa
 **Windows 10+ (with .NET SDK):**
 
 ```bash
-dotnet build -c Release        # x64
-dotnet build -c Release_x86    # x86 (32-bit)
-dotnet build -c Debug          # Debug
+dotnet build TakeoverDefender.csproj -c Release        # x64
+dotnet build TakeoverDefender.csproj -c Release_x86    # x86 (32-bit)
+dotnet build TakeoverDefender.sln -c Debug             # Debug (both projects)
 ```
 
 **Windows 8/8.1 (with .NET Framework MSBuild):**
