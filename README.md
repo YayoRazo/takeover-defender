@@ -32,6 +32,32 @@ Disabling is not a single switch. The **TAKE OVER** operation performs, in order
 
 Privileged work (service control, ownership/rename, tamper registry writes) runs as **SYSTEM** through short-lived scheduled tasks named `Tkd_*` that are deleted immediately after use; any stale `Tkd_*` tasks are also cleaned up at startup.
 
+## After TAKE OVER: the residual MsMpEng.exe process
+
+**TAKE OVER fully disables Defender's protection** — real-time scanning, behavior monitoring, IOAV, antivirus and antispyware engines are all OFF. It will **not** scan your files, and it will **not interfere with developing software or compiling code** (this is the part that used to slow things down).
+
+On modern Windows 10/11 (and especially Insider builds), the **`MsMpEng.exe` (Antimalware Service Executable) process stays loaded** even after TAKE OVER. This is by OS design: `WinDefend` is a Protected Process Light (PPL) service, and the OS blocks `sc config`/`sc stop`/registry writes/ownership-takeover against it even when running as SYSTEM. What you get is:
+
+- **CPU: ~0%** — the process is idle (all scanning engines are off).
+- **RAM: ~80–100 MB** — just the cost of keeping the process loaded.
+- **No interference** — no scanning, no real-time hooks, no slowdown when building/compiling.
+
+So for the common goal ("stop Defender from interfering with my dev work"), TAKE OVER alone is sufficient and the lingering process is harmless.
+
+### If you want the process gone entirely
+
+To stop `WinDefend`/`MsMpEng.exe` from running at all (and survive a reboot), the service must be disabled from **Safe Mode** — the only context where the SCM allows reconfiguring the protected service. Two helper scripts are provided:
+
+1. Boot into **Safe Mode** (e.g. `msconfig` → *Boot* → *Safe boot* → *Minimal* → restart).
+2. Run as Administrator:
+   ```powershell
+   PowerShell -ExecutionPolicy Bypass -File .\scripts\disable-defender-safemode.ps1
+   ```
+   It sets every Defender service to `start= disabled`.
+3. Undo Safe Mode boot (`msconfig` → uncheck *Safe boot*) and reboot normally. `WinDefend` will be **Stopped** and `MsMpEng.exe` will **not** run.
+
+Reversible with `.\scripts\enable-defender-safemode.ps1` (also run in Safe Mode).
+
 ## Build from source
 
 Copy or clone the source into a `takeover-defender/` directory (if you have a git remote, `git clone <your-remote-url>`), then:

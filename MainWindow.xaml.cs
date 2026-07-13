@@ -123,15 +123,21 @@ namespace TakeoverDefender
                         LogResult("SmartScreen disabled.", ssFail);
 
                         Log("=== COMPLETED: Windows Defender is now under your control ===\n");
-                        Log("System Antimalware (MsMpEng.exe) has been stopped.");
-                        Log("Real-time Protection is OFF.");
-                        Log("All Defender services are disabled.");
+                        Log("Real-time Protection, behavior monitoring, antivirus and antispyware are OFF.");
+                        Log("Defender will no longer scan files or interfere with compiling/developing.\n");
+
+                        Log("NOTE: MsMpEng.exe (Antimalware Service Executable) may stay loaded.");
+                        Log("On modern Windows it is a Protected Process the OS keeps alive, but with");
+                        Log("all engines off it uses ~0% CPU and only ~80-100 MB of idle RAM - it does");
+                        Log("NOT scan and will NOT slow you down.");
+                        Log("To remove that process entirely (survive reboot), disable the service from");
+                        Log("Safe Mode using scripts/disable-defender-safemode.ps1.");
                         Log("");
 
                         Dispatcher.Invoke(() =>
                         {
                             TxtWarning.Visibility = Visibility.Visible;
-                            TxtWarning.Text = "Note: Some changes may require a restart to fully take effect.";
+                            TxtWarning.Text = "Defender protection is OFF. Some changes may require a restart; MsMpEng.exe may stay loaded but is idle.";
                         });
                     }
                     catch (Exception ex)
