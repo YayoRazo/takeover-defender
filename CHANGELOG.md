@@ -4,7 +4,7 @@ All versions are three-digit semver (`major.minor.patch`). The `patch` digit is 
 automatically to the git commit count by the pre-commit hook; `major`/`minor` are
 bumped via `scripts/bump-version.ps1`.
 
-## Unreleased
+## 0.1.11 - 2026-07-12
 
 - Initial release: C# WPF (.NET Framework 4.8) tool to disable and re-enable Windows Defender on Windows 8+.
 - Audit-driven hardening: SYSTEM work runs through short-lived scheduled tasks with XML-escaped arguments and an ACL-restricted temp file; the task is driven via the `Schedule.Service` COM API (numeric state + `LastTaskResult`) so it is correct on non-English Windows.
