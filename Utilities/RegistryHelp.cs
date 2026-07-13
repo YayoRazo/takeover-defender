@@ -62,6 +62,20 @@ namespace TakeoverDefender.Utilities
             }
         }
 
+        internal static bool KeyExists(RegistryKey root, string subkey)
+        {
+            try
+            {
+                using RegistryKey baseKey = GetWriteKey(GetHive(root));
+                using RegistryKey key = baseKey.OpenSubKey(subkey);
+                return key != null;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         internal static T GetValue<T>(string subKey, string valueName, T defaultValue)
         {
             try

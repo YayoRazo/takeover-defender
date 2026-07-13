@@ -173,30 +173,44 @@ namespace TakeoverDefender.Utilities
             if (!PathLocator.IsWindows10Plus)
                 return false;
 
+            string raw = CommandExecutor.RunPowerShellWithOutput(
+                "$ErrorActionPreference='SilentlyContinue'; (Get-MpComputerStatus).IsTamperProtected").Trim();
+            if (string.Equals(raw, "True", StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (string.Equals(raw, "False", StringComparison.OrdinalIgnoreCase))
+                return false;
+
             int val = RegistryHelp.GetValue<int>(
                 @"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Defender\Features",
                 "TamperProtection", 5);
-            TamperStatus s = TamperState(val);
-            return s == TamperStatus.On || s == TamperStatus.Unknown;
+            return TamperState(val) == TamperStatus.On;
         }
 
-        public static void DisableTamperProtection()
+        public static bool DisableTamperProtection()
         {
             if (!PathLocator.IsWindows10Plus)
-                return;
+                return true;
 
             int val = RegistryHelp.GetValue<int>(
                 @"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Defender\Features",
                 "TamperProtection", 5);
             if (TamperState(val) == TamperStatus.Off)
-                return;
+                return true;
 
             _originalTamperValue = val;
-            _tamperDisabledByUs = true;
-
-            CommandExecutor.RunAsSystem(
-                @"reg add ""HKLM\SOFTWARE\Microsoft\Windows Defender\Features"" /v TamperProtection /t REG_DWORD /d 0 /f & " +
-                @"reg add ""HKLM\SOFTWARE\Microsoft\Windows Defender\Features"" /v TamperProtectionSource /t REG_DWORD /d 2 /f");
+            try
+            {
+                CommandExecutor.RunAsSystem(
+                    @"reg add ""HKLM\SOFTWARE\Microsoft\Windows Defender\Features"" /v TamperProtection /t REG_DWORD /d 0 /f & " +
+                    @"reg add ""HKLM\SOFTWARE\Microsoft\Windows Defender\Features"" /v TamperProtectionSource /t REG_DWORD /d 2 /f");
+                _tamperDisabledByUs = true;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"DisableTamperProtection failed: {ex.Message}");
+                return false;
+            }
         }
 
         public static void EnableTamperProtection()
@@ -228,7 +242,7 @@ namespace TakeoverDefender.Utilities
                 "mpsigstub.exe mrt.exe configsecuritypolicy.exe sensedlpprocessor.exe " +
                 "sensecm.exe senseir.exe sensendr.exe sensetvm.exe sensece.exe senseui.exe";
 
-            CommandExecutor.RunAsSystem($"taskkill /f /im {procs.Replace(" ", " /im ")}");
+            CommandExecutor.RunAsSystemBestEffort($"taskkill /f /im {procs.Replace(" ", " /im ")}");
         }
 
         private static bool SetMpPreferenceDisable()
@@ -282,6 +296,8 @@ Set-MpPreference -PUAProtection Enabled
             int failures = 0;
             foreach (var svc in GetServices())
             {
+                if (!RegistryHelp.KeyExists(Registry.LocalMachine, $@"SYSTEM\CurrentControlSet\Services\{svc.Key}"))
+                    continue;
                 int start = RegistryHelp.GetValue<int>(
                     $@"HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\{svc.Key}", "Start", -1);
                 if (start != StartDisabled) failures++;
@@ -304,6 +320,8 @@ Set-MpPreference -PUAProtection Enabled
             int failures = 0;
             foreach (var svc in GetServices())
             {
+                if (!RegistryHelp.KeyExists(Registry.LocalMachine, $@"SYSTEM\CurrentControlSet\Services\{svc.Key}"))
+                    continue;
                 int start = RegistryHelp.GetValue<int>(
                     $@"HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\{svc.Key}", "Start", -1);
                 if (start == StartDisabled || start < 0) failures++;
@@ -450,7 +468,7 @@ Set-MpPreference -PUAProtection Enabled
             }
 
             if (cmds.Length > 0)
-                CommandExecutor.RunAsSystem(cmds.ToString().TrimEnd(' ', '&'));
+                CommandExecutor.RunAsSystemBestEffort(cmds.ToString().TrimEnd(' ', '&'));
 
             int failures = 0;
             foreach (string f in attempted)
@@ -491,7 +509,7 @@ Set-MpPreference -PUAProtection Enabled
             }
 
             if (cmds.Length > 0)
-                CommandExecutor.RunAsSystem(cmds.ToString().TrimEnd(' ', '&'));
+                CommandExecutor.RunAsSystemBestEffort(cmds.ToString().TrimEnd(' ', '&'));
 
             int failures = 0;
             foreach (string f in expectedNormals)
@@ -512,7 +530,7 @@ Set-MpPreference -PUAProtection Enabled
             }
 
             if (cmds.Length > 0)
-                CommandExecutor.RunAsSystem(cmds.ToString().TrimEnd(' ', '&'));
+                CommandExecutor.RunAsSystemBestEffort(cmds.ToString().TrimEnd(' ', '&'));
         }
 
         private static int SetSmartScreenOff()

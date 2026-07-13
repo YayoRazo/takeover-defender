@@ -198,6 +198,18 @@ namespace TakeoverDefender.Utilities
             return (int)task.LastTaskResult;
         }
 
+        internal static void RunAsSystemBestEffort(string command)
+        {
+            try
+            {
+                RunAsSystem(command);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Best-effort SYSTEM task failed (ignored): {ex.Message}");
+            }
+        }
+
         internal static void CleanupStaleSystemTasks()
         {
             try
