@@ -58,6 +58,44 @@ To stop `WinDefend`/`MsMpEng.exe` from running at all (and survive a reboot), th
 
 Reversible with `.\scripts\enable-defender-safemode.ps1` (also run in Safe Mode).
 
+## Antivirus and browser warnings (expected)
+
+Takeover Defender is an **unsigned executable whose only job is to disable Windows
+Defender**. Because of that, antivirus engines and browsers **will flag it** — this
+is expected and unavoidable for any tool of this kind, and it is **not** a sign of a
+real infection:
+
+- **Windows Defender / other AVs** classify Defender-disabling tools as `HackTool`,
+  `PUA` (Potentially Unwanted Application) or a generic trojan. It is a heuristic
+  **false positive**: the "malicious behavior" the engine detects *is* the feature
+  the tool intentionally performs.
+- **SmartScreen / browsers** (Edge, Chrome, Firefox) show *"This file is not
+  commonly downloaded and may be dangerous"* and block the download, because the
+  `.exe` is unsigned and has no download reputation.
+
+A VirusTotal scan of the release build confirms it: most engines flag it as
+`HackTool`/`PUA` — see the
+[report for this build](https://www.virustotal.com/gui/file/0e09359d4dded06f457dc1949a2a5eaf95c8e645b7f0e58d3fd52a89243fa16c).
+
+### Running it despite the warnings
+
+1. Download the `.exe`. In the browser warning pick *Keep* → *Keep anyway*, or use a
+   download path SmartScreen doesn't gate.
+2. If Defender quarantines the file before you can run it, **add an exclusion**
+   first: *Windows Security → Virus & threat protection → Manage settings →
+   Exclusions → Add an exclusion → File* → select `TakeoverDefender.exe`.
+3. Run it as Administrator.
+
+> Yes, this is a chicken-and-egg: to disable Defender you may first have to tell
+> Defender to trust the disabler. That is inherent to what the tool does.
+
+### Reducing the warnings
+
+- **Self-sign** the executable with a code-signing certificate (removes most
+  SmartScreen reputation warnings; AV heuristic detection usually remains).
+- Submit the binary to Microsoft (and other AV vendors) as a false positive through
+  their submission portals so the detection signatures get updated.
+
 ## Build from source
 
 Clone the repo, then:
