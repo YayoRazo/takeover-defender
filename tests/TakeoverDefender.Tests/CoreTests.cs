@@ -175,4 +175,20 @@ namespace TakeoverDefender.Tests
                 DefenderManager.EvaluateState(0, 0, false));
         }
     }
+
+    public class DotNetFrameworkGuardTests
+    {
+        [Theory]
+        [InlineData(0, false)]
+        [InlineData(461814, false)]      // .NET Framework 4.7.2
+        [InlineData(528039, false)]      // one below the 4.8 floor
+        [InlineData(528040, true)]       // 4.8 on Windows 10 1903/1909
+        [InlineData(528049, true)]       // 4.8 on all other OS versions
+        [InlineData(528449, true)]       // 4.8 on Windows 11
+        [InlineData(533325, true)]       // 4.8.1, still satisfies the 4.8 floor
+        public void IsInstalled_ComparesAgainstReleaseFloor(int release, bool expected)
+        {
+            Assert.Equal(expected, DotNetFrameworkGuard.IsInstalled(release));
+        }
+    }
 }

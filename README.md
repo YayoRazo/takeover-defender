@@ -41,7 +41,7 @@ To run it anyway:
 
 - Windows 8 or later
 - Administrator privileges
-- .NET Framework 4.8
+- .NET Framework 4.8 (already included in Windows 10 1903+ and Windows 11; the app offers to install it for you otherwise)
 
 ## Getting the app
 

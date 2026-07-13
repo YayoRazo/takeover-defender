@@ -4,6 +4,12 @@ All versions are three-digit semver (`major.minor.patch`). The `patch` digit is 
 automatically to the git commit count by the pre-commit hook; `major`/`minor` are
 bumped via `scripts/bump-version.ps1`.
 
+## Unreleased
+
+- Startup guard: detects an outdated .NET Framework (below 4.8) via the
+  documented registry `Release` floor, offers to download and silently
+  install the real one, then relaunches the app.
+
 ## 0.1.11 - 2026-07-12
 
 - Initial release: C# WPF (.NET Framework 4.8) tool to disable and re-enable Windows Defender on Windows 8+.

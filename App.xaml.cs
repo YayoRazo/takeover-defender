@@ -34,6 +34,8 @@ namespace TakeoverDefender
                 Environment.Exit(1);
             }
 
+            DotNetFrameworkGuard.EnsureInstalledOrExit();
+
             using WindowsIdentity identity = WindowsIdentity.GetCurrent();
             WindowsPrincipal principal = new WindowsPrincipal(identity);
             if (!principal.IsInRole(WindowsBuiltInRole.Administrator))
