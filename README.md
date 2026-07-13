@@ -228,7 +228,7 @@ The version is a single 3-digit semver (`x.y.z`) kept in `Properties/AssemblyInf
    git tag vx.y.z
    git push origin main --tags
    ```
-4. The `release` workflow builds x64 + x86, runs tests, and publishes a GitHub Release with both `TakeoverDefender.exe` artifacts.
+4. The `release` workflow builds x64 + x86, runs tests, and publishes a GitHub Release with `TakeoverDefender-x64.exe` and `TakeoverDefender-x86.exe`.
 
 ## License
 

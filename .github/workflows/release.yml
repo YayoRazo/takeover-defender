@@ -36,16 +36,22 @@ jobs:
           $v = (Select-String -Path Properties\AssemblyInfo.cs 'AssemblyInformationalVersion\("(\d+\.\d+\.\d+)"').Matches.Groups[1].Value
           "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
+      - name: Rename binaries by architecture
+        shell: pwsh
+        run: |
+          Copy-Item bin\Release\net48\TakeoverDefender.exe TakeoverDefender-x64.exe
+          Copy-Item bin\Release_x86\net48\TakeoverDefender.exe TakeoverDefender-x86.exe
+
       - uses: actions/upload-artifact@v4
         with:
           name: TakeoverDefender-x64
-          path: bin\Release\net48\TakeoverDefender.exe
+          path: TakeoverDefender-x64.exe
           if-no-files-found: error
 
       - uses: actions/upload-artifact@v4
         with:
           name: TakeoverDefender-x86
-          path: bin\Release_x86\net48\TakeoverDefender.exe
+          path: TakeoverDefender-x86.exe
           if-no-files-found: error
 
       - name: GitHub Release
@@ -54,6 +60,6 @@ jobs:
         with:
           name: ${{ steps.ver.outputs.version }}
           files: |
-            bin\Release\net48\TakeoverDefender.exe
-            bin\Release_x86\net48\TakeoverDefender.exe
+            TakeoverDefender-x64.exe
+            TakeoverDefender-x86.exe
           generate_release_notes: true
