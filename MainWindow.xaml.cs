@@ -58,7 +58,7 @@ namespace TakeoverDefender
 
                         case DefenderManager.DefenderState.Inactive:
                             StatusTitle.Text = "Defender appears INACTIVE";
-                            StatusDot.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#f38ba8"));
+                            StatusDot.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#ef4444"));
                             StatusDetail.Text = "Real-time protection and antimalware appear disabled.";
                             break;
 
