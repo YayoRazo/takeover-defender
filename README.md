@@ -60,7 +60,12 @@ Reversible with `.\scripts\enable-defender-safemode.ps1` (also run in Safe Mode)
 
 ## Build from source
 
-Copy or clone the source into a `takeover-defender/` directory (if you have a git remote, `git clone <your-remote-url>`), then:
+Clone the repo, then:
+
+```bash
+git clone https://github.com/YayoRazo/takeover-defender.git
+cd takeover-defender
+```
 
 ### 1. Install build tools
 
