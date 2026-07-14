@@ -81,6 +81,8 @@ namespace TakeoverDefender
             Progress.Visibility = Visibility.Visible;
 
             Log("=== TAKEOVER: Disabling Windows Defender ===\n");
+            if (PathLocator.IsSafeMode)
+                Log("Safe Mode detected - Defender services will be disabled permanently this run.\n");
 
             try
             {
@@ -129,12 +131,20 @@ namespace TakeoverDefender
                         Log("Real-time Protection, behavior monitoring, antivirus and antispyware are OFF.");
                         Log("Defender will no longer scan files or interfere with compiling/developing.\n");
 
-                        Log("NOTE: MsMpEng.exe (Antimalware Service Executable) may stay loaded.");
-                        Log("On modern Windows it is a Protected Process the OS keeps alive, but with");
-                        Log("all engines off it uses ~0% CPU and only ~80-100 MB of idle RAM - it does");
-                        Log("NOT scan and will NOT slow you down.");
-                        Log("To remove that process entirely (survive reboot), disable the service from");
-                        Log("Safe Mode using scripts/disable-defender-safemode.ps1.");
+                        if (PathLocator.IsSafeMode)
+                        {
+                            Log("Since this ran in Safe Mode, the services were disabled permanently.");
+                            Log("Undo Safe Mode boot and reboot normally - WinDefend/MsMpEng.exe will not start again.");
+                        }
+                        else
+                        {
+                            Log("NOTE: MsMpEng.exe (Antimalware Service Executable) may stay loaded.");
+                            Log("On modern Windows it is a Protected Process the OS keeps alive, but with");
+                            Log("all engines off it uses ~0% CPU and only ~80-100 MB of idle RAM - it does");
+                            Log("NOT scan and will NOT slow you down.");
+                            Log("To remove that process entirely (survives reboot), boot into Safe Mode");
+                            Log("and click TAKE OVER again here - no script needed.");
+                        }
                         Log("");
 
                         Dispatcher.Invoke(() =>

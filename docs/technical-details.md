@@ -30,17 +30,15 @@ So for the common goal ("stop Defender from interfering with my dev work"), TAKE
 
 ## Safe Mode: stopping MsMpEng.exe entirely
 
-To stop `WinDefend`/`MsMpEng.exe` from running at all (and survive a reboot), the service must be disabled from **Safe Mode** — the only context where the SCM allows reconfiguring the protected service. Two helper scripts are provided:
+To stop `WinDefend`/`MsMpEng.exe` from running at all (and survive a reboot), the service must be disabled from **Safe Mode** — the only context where the SCM allows reconfiguring the protected service.
 
 1. Boot into **Safe Mode** (e.g. `msconfig` → *Boot* → *Safe boot* → *Minimal* → restart).
-2. Run as Administrator:
-   ```powershell
-   PowerShell -ExecutionPolicy Bypass -File .\scripts\disable-defender-safemode.ps1
-   ```
-   It sets every Defender service to `start= disabled`.
+2. Run `TakeoverDefender.exe` and click **TAKE OVER**. The app detects Safe Mode automatically and sets every Defender service to `start= disabled` directly (Task Scheduler, which the normal-boot path relies on, is not reliably available in Safe Mode, so this path uses plain elevated `sc` commands instead).
 3. Undo Safe Mode boot (`msconfig` → uncheck *Safe boot*) and reboot normally. `WinDefend` will be **Stopped** and `MsMpEng.exe` will **not** run.
 
-Reversible with `.\scripts\enable-defender-safemode.ps1` (also run in Safe Mode).
+Reversible the same way: boot into Safe Mode and click **RESTORE**.
+
+The standalone `scripts\disable-defender-safemode.ps1` / `enable-defender-safemode.ps1` remain available for scripted/no-GUI use and do the same thing.
 
 ## Reducing antivirus/browser warnings
 

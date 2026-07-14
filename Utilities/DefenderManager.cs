@@ -306,8 +306,25 @@ Set-MpPreference -PUAProtection Enabled
             var cmds = new StringBuilder();
             foreach (var svc in GetServices())
                 cmds.Append($"sc stop \"{svc.Key}\" & sc config \"{svc.Key}\" start= disabled & ");
-            CommandExecutor.RunAsSystem(cmds.ToString().TrimEnd(' ', '&'));
+            RunServiceCommand(cmds.ToString().TrimEnd(' ', '&'));
 
+            return VerifyServiceStartTypes(StartDisabled);
+        }
+
+        // Task Scheduler (schtasks) is not guaranteed to run under Safe Mode, and Safe Mode is
+        // also the only context where WinDefend isn't PPL-protected, so plain elevated `sc`
+        // (the process is already admin per app.manifest) is required there instead of the
+        // SYSTEM-scheduled-task trick used for a normal boot.
+        private static void RunServiceCommand(string command)
+        {
+            if (PathLocator.IsSafeMode)
+                CommandExecutor.RunCommandWithExit(command);
+            else
+                CommandExecutor.RunAsSystem(command);
+        }
+
+        private static int VerifyServiceStartTypes(int expected)
+        {
             int failures = 0;
             foreach (var svc in GetServices())
             {
@@ -315,7 +332,7 @@ Set-MpPreference -PUAProtection Enabled
                     continue;
                 int start = RegistryHelp.GetValue<int>(
                     $@"HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\{svc.Key}", "Start", -1);
-                if (start != StartDisabled) failures++;
+                if (start != expected) failures++;
             }
             return failures;
         }
@@ -330,7 +347,7 @@ Set-MpPreference -PUAProtection Enabled
                 if (target == StartAuto)
                     cmds.Append($"sc start \"{svc.Key}\" & ");
             }
-            CommandExecutor.RunAsSystem(cmds.ToString().TrimEnd(' ', '&'));
+            RunServiceCommand(cmds.ToString().TrimEnd(' ', '&'));
 
             int failures = 0;
             foreach (var svc in GetServices())

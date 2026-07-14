@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Microsoft.Win32;
 
 namespace TakeoverDefender.Utilities
 {
@@ -83,6 +84,9 @@ namespace TakeoverDefender.Utilities
         internal static bool IsWow64 => Environment.Is64BitOperatingSystem && !Environment.Is64BitProcess;
 
         internal static bool IsWindows10Plus => Environment.OSVersion.Version.Major >= 10;
+
+        internal static bool IsSafeMode =>
+            RegistryHelp.KeyExists(Registry.LocalMachine, @"SYSTEM\CurrentControlSet\Control\SafeBoot\Option");
 
         internal static string WindowsDefenderDir =>
             Path.Combine(ProgramFiles, "Windows Defender");
