@@ -92,9 +92,12 @@ namespace TakeoverDefender
                         {
                             Log("[0] Tamper Protection is ON - temporarily disabling to allow changes...");
                             if (!DefenderManager.DisableTamperProtection())
+                            {
+                                DefenderManager.OpenTamperProtectionSettings();
                                 throw new InvalidOperationException(
                                     "Could not disable Tamper Protection automatically (the registry key is protected). " +
-                                    "Turn it off manually in Windows Security > Virus & threat protection > Tamper Protection, then retry.");
+                                    "Opened Windows Security for you - turn Tamper Protection off there, then retry.");
+                            }
                             Log("  Tamper Protection disabled.\n");
                         }
 

@@ -213,6 +213,21 @@ namespace TakeoverDefender.Utilities
             }
         }
 
+        public static void OpenTamperProtectionSettings()
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("windowsdefender://ThreatSettings")
+                {
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"OpenTamperProtectionSettings failed: {ex.Message}");
+            }
+        }
+
         public static void EnableTamperProtection()
         {
             if (!PathLocator.IsWindows10Plus)
